@@ -31,8 +31,29 @@ require_once($CFG->dirroot.'/mod/questionnaire/locallib.php');
 class mod_questionnaire_mod_form extends moodleform_mod {
 
     protected function definition() {
-        global $COURSE;
+        global $COURSE,$DB,$USER;
         global $questionnairetypes, $questionnairerespondents, $questionnaireresponseviewers, $autonumbering;
+
+
+        $hideactionbtnteacher = false;
+
+        $chkTeacher = "select count(*) as allcount from {role_assignments} ra left join {role} r on r.id = ra.roleid  WHERE ra.userid=" . $USER->id . " and r.shortname='editingteacher'";
+        $data = $DB->get_record_sql($chkTeacher);
+
+        if($_GET['update']) {
+            $sql = "SELECT cm.id,m.name,cm.instance,qr.submitted FROM {course_modules} cm left join {modules} m on m.id = cm.module left join {questionnaire_response} qr on qr.questionnaireid = cm.instance where cm.id  = " . $_GET['update'];
+            $checksub = $DB->get_record_sql($sql);
+            if($checksub->submitted){
+                $disabledrespondtype = array('disabled'=>'disabled');
+            }
+
+            if($checksub->name =='questionnaire' && $data->allcount !=0){  //
+                $hideactionbtnteacher = true;
+            }
+
+        }
+
+
 
         $questionnaire = new questionnaire($this->_instance, null, $COURSE, $this->_cm);
 
@@ -62,15 +83,30 @@ class mod_questionnaire_mod_form extends moodleform_mod {
         $mform->addHelpButton('enableclosegroup', 'closedate', 'questionnaire');
         $mform->disabledIf('enableclosegroup', 'useclosedate', 'notchecked');
 
-        $mform->addElement('header', 'questionnairehdr', get_string('responseoptions', 'questionnaire'));
+        //Hide response options
+
+        if (isset($questionnaire->cm) && $questionnaire->cm!="" && $questionnaire->survey->realm =='bespoke') {
+            $capabilities = questionnaire_load_capabilities($questionnaire->cm->id);
+
+            if ($capabilities->editbespoke) {
+                $mform->addElement('header', 'questionnairehdr', get_string('responseoptions', 'questionnaire'));
+            }
+            if (!$capabilities->editbespoke) {
+                $mform->addElement('html','<div style="display:none">');
+            }
+        }else{
+
+            $mform->addElement('header', 'questionnairehdr', get_string('responseoptions', 'questionnaire'));
+        }
 
         $mform->addElement('select', 'qtype', get_string('qtype', 'questionnaire'), $questionnairetypes);
         $mform->addHelpButton('qtype', 'qtype', 'questionnaire');
 
         $mform->addElement('hidden', 'cannotchangerespondenttype');
         $mform->setType('cannotchangerespondenttype', PARAM_INT);
-        $mform->addElement('select', 'respondenttype', get_string('respondenttype', 'questionnaire'), $questionnairerespondents);
+        $mform->addElement('select', 'respondenttype', get_string('respondenttype', 'questionnaire'), $questionnairerespondents,$disabledrespondtype);
         $mform->addHelpButton('respondenttype', 'respondenttype', 'questionnaire');
+        $mform->setDefault('respondenttype', 'anonymous');
         $mform->disabledIf('respondenttype', 'cannotchangerespondenttype', 'eq', 1);
 
         $mform->addElement('select', 'resp_view', get_string('responseview', 'questionnaire'), $questionnaireresponseviewers);
@@ -106,6 +142,15 @@ class mod_questionnaire_mod_form extends moodleform_mod {
                 $questionnaire->id = 0;
             }
 
+
+            if (isset($questionnaire->cm) && $questionnaire->cm!="" && $questionnaire->survey->realm =='bespoke') {
+                if (!$capabilities->editbespoke) {
+                    $mform->addElement('html', '</div>');
+                }
+
+            }
+
+
             $mform->addElement('header', 'contenthdr', get_string('contentoptions', 'questionnaire'));
             $mform->addHelpButton('contenthdr', 'createcontent', 'questionnaire');
 
@@ -133,6 +178,22 @@ class mod_questionnaire_mod_form extends moodleform_mod {
                                 '('.get_string('notemplatesurveys', 'questionnaire').')');
             }
 
+
+            // Retrieve existing bespoke questionnaires from this site.
+            $surveys = questionnaire_get_survey_select($COURSE->id, 'bespoke');
+
+            if (!empty($surveys)) {
+                $prelabel = get_string('usebespoke', 'questionnaire');
+                foreach ($surveys as $value => $label) {
+                    $mform->addElement('radio', 'create', $prelabel, $label, $value);
+                    $prelabel = '';
+                }
+            } else {
+                $mform->addElement('static', 'usebespoke', get_string('usebespoke', 'questionnaire'),
+                    '('.get_string('nobespokesurveys', 'questionnaire').')');
+            }
+
+
             // Retrieve existing public questionnaires from this site.
             $surveys = questionnaire_get_survey_select($COURSE->id, 'public');
             if (!empty($surveys)) {
@@ -150,8 +211,7 @@ class mod_questionnaire_mod_form extends moodleform_mod {
         }
 
         $this->standard_coursemodule_elements();
-
-        // Buttons.
+		// Buttons.
         $this->add_action_buttons();
     }
 

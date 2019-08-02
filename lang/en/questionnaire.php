@@ -633,3 +633,9 @@ $string['yesno_help'] = 'Simple Yes/No question.';
 $string['yourresponse'] = 'Your response';
 $string['yourresponses'] = 'Your responses';
 $string['crontask'] = 'Questionnaire cleanup job';
+//Bespoke type customization String constant
+$string['usebespoke'] = 'Use Bespoke';
+$string['nobespokesurveys'] = 'No Bespoke questionnaires.';
+$string['bespoke'] = 'bespoke';
+$string['questionnaire:createbespoke'] = 'Create bespoke questionnaires';
+$string['questionnaire:editbespoke'] = 'Edit bespoke questionnaires';

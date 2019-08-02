@@ -147,6 +147,7 @@ abstract class base {
             $this->content = $question->content;
             $this->required = $question->required;
             $this->deleted = $question->deleted;
+            $this->created_by = $question->created_by;
 
             $this->type_id = $question->type_id;
             $this->type = $qtypes[$this->type_id]->type;
@@ -567,7 +568,12 @@ abstract class base {
      * @param boolean $calcposition Whether or not to calculate the next available position in the survey.
      */
     public function add($questionrecord, array $choicerecords = null, $calcposition = true) {
-        global $DB;
+        global $DB,$USER,$COURSE;
+
+
+
+        $questionrecord->created_by = $USER->id;
+        $questionrecord->courseid = $COURSE->id;
 
         // Create new question.
         if ($calcposition) {
@@ -1128,6 +1134,7 @@ abstract class base {
     public function form_update($formdata, $questionnaire) {
         global $DB;
 
+
         $this->form_preprocess_data($formdata);
         if (!empty($formdata->qid)) {
 
@@ -1165,7 +1172,7 @@ abstract class base {
                 }
             }
             $questionrecord->content = '';
-
+            $questionrecord->instance = $questionnaire->cm->instance;
             $this->add($questionrecord);
 
             // Handle any attachments in the content.
@@ -1301,6 +1308,9 @@ abstract class base {
                 $cidx++;
             }
         }
+		
+        global $CFG;
+        redirect ($CFG->wwwroot . '/mod/questionnaire/questions.php?id='.$questionnaire->cm->id);
     }
 
     /**

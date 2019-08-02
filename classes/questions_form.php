@@ -35,7 +35,7 @@ class questions_form extends \moodleform {
     }
 
     public function definition() {
-        global $CFG, $questionnaire, $SESSION;
+        global $CFG, $questionnaire, $SESSION,$USER;
         global $DB;
 
         $sid = $questionnaire->survey->id;
@@ -236,10 +236,13 @@ class questions_form extends \moodleform {
                         }
                     }
                 }
-                $manageqgroup[] =& $mform->createElement('image', 'movebutton['.$question->id.']',
-                                $msrc, $mextra);
-                $manageqgroup[] =& $mform->createElement('image', 'editbutton['.$question->id.']', $esrc, $eextra);
-                $manageqgroup[] =& $mform->createElement('image', 'removebutton['.$question->id.']', $rsrc, $rextra);
+
+                if($question->created_by == $USER->id ||is_siteadmin()) { //custom code
+                    $manageqgroup[] =& $mform->createElement('image', 'movebutton[' . $question->id . ']',
+                        $msrc, $mextra);
+                    $manageqgroup[] =& $mform->createElement('image', 'editbutton[' . $question->id . ']', $esrc, $eextra);
+                    $manageqgroup[] =& $mform->createElement('image', 'removebutton[' . $question->id . ']', $rsrc, $rextra);
+                }
 
                 if ($tid != QUESPAGEBREAK && $tid != QUESSECTIONTEXT) {
                     if ($required == 'y') {

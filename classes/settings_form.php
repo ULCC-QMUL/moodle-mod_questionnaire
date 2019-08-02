@@ -43,6 +43,12 @@ class settings_form extends \moodleform {
         if (!$capabilities->createpublic) {
             unset($questionnairerealms['public']);
         }
+
+        if (!$capabilities->createbespoke) {
+            unset($questionnairerealms['bespoke']);
+        }
+
+
         if (isset($questionnairerealms['public']) || isset($questionnairerealms['template'])) {
             $mform->addElement('select', 'realm', get_string('realm', 'questionnaire'), $questionnairerealms);
             $mform->setDefault('realm', $questionnaire->survey->realm);

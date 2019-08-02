@@ -72,6 +72,9 @@
         <FIELD NAME="content" TYPE="text" NOTNULL="true" SEQUENCE="false"/>
         <FIELD NAME="required" TYPE="char" LENGTH="1" NOTNULL="true" DEFAULT="n" SEQUENCE="false"/>
         <FIELD NAME="deleted" TYPE="char" LENGTH="1" NOTNULL="true" DEFAULT="n" SEQUENCE="false"/>
+        <FIELD NAME="created_by" SEQUENCE="false" NOTNULL="true" LENGTH="11" TYPE="int" DEFAULT="0"/>
+        <FIELD NAME="instance" SEQUENCE="false" NOTNULL="true" LENGTH="11" TYPE="int" DEFAULT="0"/>
+        <FIELD NAME="courseid" SEQUENCE="false" NOTNULL="true" LENGTH="11" TYPE="int" DEFAULT="0"/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>

@@ -34,7 +34,8 @@ $capabilities = array(
         'captype' => 'write',
         'contextlevel' => CONTEXT_COURSE,
         'archetypes' => array(
-            'editingteacher' => CAP_ALLOW,
+            'editingteacher' => CAP_PREVENT,
+//            'course_admin' => CAP_ALLOW,
             'manager' => CAP_ALLOW
         ),
         'clonepermissionsfrom' => 'moodle/course:manageactivities'
@@ -133,6 +134,7 @@ $capabilities = array(
         'contextlevel' => CONTEXT_MODULE,
         'legacy' => array(
             'editingteacher' => CAP_ALLOW,
+//             'course_admin' => CAP_ALLOW,
             'coursecreator' => CAP_ALLOW,
             'manager' => CAP_ALLOW
         )
@@ -222,6 +224,26 @@ $capabilities = array(
                         'coursecreator' => CAP_ALLOW,
                         'teacher' => CAP_ALLOW,
                         'editingteacher' => CAP_ALLOW
+        )
+    ),
+
+    // CUSTOM CAPABILITY: Ability to create bespoke surveys which can be accessed from multiple places.
+    'mod/questionnaire:createbespoke' => array(
+
+        'captype' => 'write',
+        'contextlevel' => CONTEXT_MODULE,
+        'legacy' => array(
+            'coursecreator' => CAP_ALLOW,
+            'manager' => CAP_ALLOW
+        )
+    ),
+    'mod/questionnaire:editbespoke' => array(
+
+        'captype' => 'write',
+        'contextlevel' => CONTEXT_MODULE,
+        'legacy' => array(
+            'coursecreator' => CAP_ALLOW,
+            'manager' => CAP_ALLOW
         )
     ),
 

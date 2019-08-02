@@ -67,6 +67,10 @@ function questionnaire_add_instance($questionnaire) {
     // will create a new instance and return the id number
     // of the new instance.
     global $DB, $CFG;
+
+
+
+
     require_once($CFG->dirroot.'/mod/questionnaire/questionnaire.class.php');
     require_once($CFG->dirroot.'/mod/questionnaire/locallib.php');
 
@@ -104,7 +108,7 @@ function questionnaire_add_instance($questionnaire) {
                 $qobject->add_questions($copyid);
             }
             // New questionnaires created as "use public" should not create a new survey instance.
-            if ($copyrealm == 'public') {
+            if ($copyrealm == 'public' || $copyrealm == 'bespoke') {
                 $sid = $copyid;
             } else {
                 $sid = $qobject->sid = $qobject->survey_copy($course->id);
@@ -558,9 +562,38 @@ function questionnaire_extend_settings_navigation(settings_navigation $settings,
 
     if ($owner = $DB->get_field('questionnaire_survey', 'courseid', ['id' => $questionnaire->sid])) {
         $owner = (trim($owner) == trim($courseid));
+
+
+
     } else {
         $owner = true;
     }
+//    echo '<pre>';
+//    print_R($questionnairenode);
+//    echo '</pre>';
+
+
+
+//  set $owner for bespoke type Questionnaire
+    if($questionnaire->sid) {
+        $sql = "select realm from {questionnaire_survey} where   id = $questionnaire->sid";
+        $brealm = $DB->get_record_sql($sql);
+        if ($brealm->realm == 'bespoke') {
+            $owner = true;
+        }
+
+    }
+
+    if($cm->instance){              //check for submission of Questionnaire
+
+       $sql = "select count(*) as count from {questionnaire_response} where   questionnaireid = $cm->instance";
+       $count =  $DB->get_record_sql($sql);
+       if($count->count){
+        $owner = false;
+       }
+    }
+//  set $owner for bespoke type Questionnaire ends here
+
 
     // On view page, currentgroupid is not yet sent as an optional_param, so get it.
     $groupmode = groups_get_activity_groupmode($cm, $course);
@@ -574,6 +607,7 @@ function questionnaire_extend_settings_navigation(settings_navigation $settings,
     // We want to add these new nodes after the Edit settings node, and before the
     // Locally assigned roles node. Of course, both of those are controlled by capabilities.
     $keys = $questionnairenode->get_children_key_list();
+
     $beforekey = null;
     $i = array_search('modedit', $keys);
     if (($i === false) && array_key_exists(0, $keys)) {
@@ -633,6 +667,9 @@ function questionnaire_extend_settings_navigation(settings_navigation $settings,
     }
     $usernumresp = $questionnaire->count_submissions($USER->id);
 
+
+
+
     if ($questionnaire->capabilities->readownresponses && ($usernumresp > 0)) {
         $url = '/mod/questionnaire/myreport.php';
 
@@ -687,6 +724,8 @@ function questionnaire_extend_settings_navigation(settings_navigation $settings,
         } else {
             $summarynode = $reportnode;
         }
+
+
         $summarynode->add(get_string('order_default', 'questionnaire'),
             new moodle_url('/mod/questionnaire/report.php',
                 array('instance' => $questionnaire->id, 'action' => 'vall', 'group' => $currentgroupid)));
@@ -1220,3 +1259,63 @@ function mod_questionnaire_core_calendar_provide_event_action(calendar_event $ev
     );
 }
 
+//cron
+
+
+function questionnaire_cron(){
+
+
+    global $DB;
+    $dateclose =  date('Y-m-d', strtotime("+7 days"));
+    $sql = "select * from {questionnaire} where FROM_UNIXTIME(closedate,'%Y-%m-%d') = '".$dateclose."'";
+    $result = $DB->get_records_sql($sql);
+    $stucount = 0;
+
+    foreach($result as $questionnaire){
+        $context = context_course::instance($questionnaire->course);
+        /// get_context_instance(CONTEXT_COURSE, $questionnaire->course);
+        $students = get_role_users(5 , $context);
+
+        foreach($students as $student){
+
+            $sql = "select count(*) as stucount from {questionnaire_response}  where questionnaireid ={$questionnaire->id} && userid <>$student->id";
+            $count = $DB->get_record_sql($sql);
+            if($count->stucount){
+                $eventdata = new \core\message\message();
+                $eventdata->courseid          = empty($questionnaire->course) ? SITEID : $questionnaire->course;
+                $eventdata->modulename        = 'moodle';
+                $eventdata->component         = 'moodle';
+                $eventdata->name              = 'instantmessage';
+                $eventdata->notification      = 1;
+                $eventdata->userfrom          = get_admin();
+                $eventdata->userto            = $student;
+                $eventdata->subject           = "Questionnaire Notification";
+                $eventdata->fullmessage       = "Hi, {$student->firstname} {$student->lastname} ,You have only 7 days left to Attend the  {$questionnaire->name} Questionnaire";
+                $eventdata->fullmessageformat = FORMAT_PLAIN;
+                $eventdata->fullmessagehtml   = '';
+                $eventdata->smallmessage      = '';
+
+                $todaysdate =  date('Y-m-d');
+
+                $notificationcount  = "select count(*) as ncount from {notifications} where useridto ={$student->id} && FROM_UNIXTIME(timecreated,'%Y-%m-%d') ='".$todaysdate."'";
+                $ncount =  $DB->get_record_sql($notificationcount);
+
+                if($ncount->ncount ==0) {
+                    if (message_send($eventdata)) {
+                        $stucount++;
+                    }
+                }
+
+            }
+
+        }
+
+    }
+
+    if ($stucount) {
+        mtrace('Questionnaire closing date reminders sent to ' . $stucount . ' students.');
+    } else {
+        mtrace('There were no Questionnaire closing date reminders to be sent');
+    }
+
+}

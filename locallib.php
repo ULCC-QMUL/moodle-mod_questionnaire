@@ -72,7 +72,8 @@ $questionnairerespondents = array ('fullname' => get_string('respondenttypefulln
 global $questionnairerealms;
 $questionnairerealms = array ('private' => get_string('private', 'questionnaire'),
                                'public' => get_string('public', 'questionnaire'),
-                               'template' => get_string('template', 'questionnaire'));
+                                'bespoke' => get_string('bespoke', 'questionnaire'),
+                                'template' => get_string('template', 'questionnaire'));
 
 global $questionnaireresponseviewers;
 $questionnaireresponseviewers = array (
@@ -203,6 +204,8 @@ function questionnaire_load_capabilities($cmid) {
     $cb->readallresponseanytime = has_capability('mod/questionnaire:readallresponseanytime', $context);
     $cb->printblank             = has_capability('mod/questionnaire:printblank', $context);
     $cb->preview                = has_capability('mod/questionnaire:preview', $context);
+    $cb->createbespoke           = has_capability('mod/questionnaire:createbespoke', $context);
+    $cb->editbespoke           = has_capability('mod/questionnaire:editbespoke', $context);
 
     $cb->viewhiddenactivities   = has_capability('moodle/course:viewhiddenactivities', $context, null, false);
 
@@ -343,6 +346,8 @@ function questionnaire_delete_dependencies($qid) {
 function questionnaire_get_survey_list($courseid=0, $type='') {
     global $DB;
 
+
+
     if ($courseid == 0) {
         if (isadmin()) {
             $sql = "SELECT id,name,courseid,realm,status " .
@@ -353,21 +358,30 @@ function questionnaire_get_survey_list($courseid=0, $type='') {
             return false;
         }
     } else {
-        if ($type == 'public') {
-            $sql = "SELECT s.id,s.name,s.courseid,s.realm,s.status,s.title,q.id as qid,q.name as qname " .
+        if ($type == 'public' ) {
+           $sql = "SELECT s.id,s.name,s.courseid,s.realm,s.status,s.title,q.id as qid,q.name as qname " .
                    "FROM {questionnaire} q " .
                    "INNER JOIN {questionnaire_survey} s ON s.id = q.sid AND s.courseid = q.course " .
                    "WHERE realm = ? " .
                    "ORDER BY realm,name ";
             $params = [$type];
         } else if ($type == 'template') {
+
             $sql = "SELECT s.id,s.name,s.courseid,s.realm,s.status,s.title,q.id as qid,q.name as qname " .
                    "FROM {questionnaire} q " .
                    "INNER JOIN {questionnaire_survey} s ON s.id = q.sid AND s.courseid = q.course " .
                    "WHERE (realm = ?) " .
                    "ORDER BY realm,name ";
             $params = [$type];
-        } else if ($type == 'private') {
+        } else if (  $type == 'bespoke') { //Query for bespoke Questionnaire
+
+            $sql = "SELECT DISTINCT s.id,s.name,s.courseid,s.realm,s.status,s.title,q.id as qid,q.name as qname " .
+                "FROM {questionnaire} q " .
+                "INNER JOIN {questionnaire_survey} s ON s.id = q.sid AND s.courseid = q.course " .
+                "WHERE (realm = ?) " .
+                "ORDER BY q.id desc ";
+            $params = [$type];
+        } elseif ($type == 'private') {
             $sql = "SELECT s.id,s.name,s.courseid,s.realm,s.status,q.id as qid,q.name as qname " .
                 "FROM {questionnaire} q " .
                 "INNER JOIN {questionnaire_survey} s ON s.id = q.sid " .
@@ -390,38 +404,54 @@ function questionnaire_get_survey_list($courseid=0, $type='') {
 }
 
 function questionnaire_get_survey_select($courseid=0, $type='') {
-    global $OUTPUT, $DB;
+    global $OUTPUT, $DB,$USER;
+
 
     $surveylist = array();
 
     if ($surveys = questionnaire_get_survey_list($courseid, $type)) {
         $strpreview = get_string('preview_questionnaire', 'questionnaire');
-        foreach ($surveys as $survey) {
-            $originalcourse = $DB->get_record('course', ['id' => $survey->courseid]);
-            if (!$originalcourse) {
-                // This should not happen, but we found a case where a public survey
-                // still existed in a course that had been deleted, and so this
-                // code lead to a notice, and a broken link. Since that is useless
-                // we just skip surveys like this.
-                continue;
-            }
 
-            // Prevent creating a copy of a public questionnaire IN THE SAME COURSE as the original.
-            if (($type == 'public') && ($survey->courseid == $courseid)) {
-                continue;
-            } else {
-                $args = "sid={$survey->id}&popup=1";
-                if (!empty($survey->qid)) {
-                    $args .= "&qid={$survey->qid}";
+//        restrict teachr to add and edit child Questionnair
+
+        $chkTeacher = "select count(*) as allcount from {role_assignments} ra left join {role} r on r.id = ra.roleid  WHERE ra.userid=" . $USER->id . " and r.shortname='editingteacher'";
+
+        $data = $DB->get_record_sql($chkTeacher);
+
+        if ($data->allcount ==0 || is_siteadmin()) {
+
+
+            foreach ($surveys as $survey) {
+                $originalcourse = $DB->get_record('course', ['id' => $survey->courseid]);
+                if (!$originalcourse) {
+                    // This should not happen, but we found a case where a public survey
+                    // still existed in a course that had been deleted, and so this
+                    // code lead to a notice, and a broken link. Since that is useless
+                    // we just skip surveys like this.
+                    continue;
                 }
-                $link = new moodle_url("/mod/questionnaire/preview.php?{$args}");
-                $action = new popup_action('click', $link);
-                $label = $OUTPUT->action_link($link, $survey->qname.' ['.$originalcourse->fullname.']',
-                    $action, array('title' => $strpreview));
-                $surveylist[$type.'-'.$survey->id] = $label;
+
+
+                // Prevent creating a copy of a public questionnaire IN THE SAME COURSE as the original.
+                if (($type == 'public') && ($survey->courseid == $courseid)) {
+                    continue;
+                } else {
+                    $args = "sid={$survey->id}&popup=1";
+                    if (!empty($survey->qid)) {
+                        $args .= "&qid={$survey->qid}";
+                    }
+                    $link = new moodle_url("/mod/questionnaire/preview.php?{$args}");
+                    $action = new popup_action('click', $link);
+                    $label = $OUTPUT->action_link($link, $survey->qname . ' [' . $originalcourse->fullname . ']',
+                        $action, array('title' => $strpreview));
+                    $surveylist[$type . '-' . $survey->id] = $label;
+                }
             }
         }
+
     }
+
+
     return $surveylist;
 }
 
@@ -523,7 +553,7 @@ function questionnaire_get_incomplete_users($cm, $sid,
                 $startpage = false,
                 $pagecount = false) {
 
-    global $DB;
+    global $DB,$COURSE;
 
     $context = context_module::instance($cm->id);
 
@@ -539,6 +569,19 @@ function questionnaire_get_incomplete_users($cm, $sid,
                     $group,
                     '',
                     true)) {
+        return false;
+    }
+
+
+$sql = "SELECT u.id, u.username           
+FROM {user} u
+INNER JOIN {role_assignments} ra ON ra.userid = u.id
+INNER JOIN {context} ct ON ct.id = ra.contextid
+INNER JOIN {course} c ON c.id = ct.instanceid
+INNER JOIN {role} r ON r.id = ra.roleid
+INNER JOIN {course_categories} cc ON cc.id = c.category      
+WHERE r.id =5 && c.id = $COURSE->id ";
+    if(!$allusers = $DB->get_records_sql($sql)){
         return false;
     }
     $allusers = array_keys($allusers);
@@ -559,6 +602,7 @@ function questionnaire_get_incomplete_users($cm, $sid,
     if (($startpage !== false) && ($pagecount !== false)) {
         $allusers = array_slice($allusers, $startpage, $pagecount);
     }
+
     return $allusers;
 }
 

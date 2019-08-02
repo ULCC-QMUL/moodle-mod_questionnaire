@@ -142,7 +142,7 @@ foreach ($questionnaires as $questionnaire) {
             $data[] = $DB->count_records('questionnaire_response', ['questionnaireid' => $questionnaire->id, 'complete' => 'y']);
             if ($survey = $DB->get_record('questionnaire_survey', ['id' => $questionnaire->sid])) {
                 // For a public questionnaire, look for the original public questionnaire that it is based on.
-                if ($survey->realm == 'public') {
+                if ($survey->realm == 'public' || $survey->realm == 'bespoke') {
                     $strpreview = get_string('preview_questionnaire', 'questionnaire');
                     if ($survey->courseid != $course->id) {
                         $publicoriginal = '';

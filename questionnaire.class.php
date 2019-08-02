@@ -111,22 +111,46 @@ class questionnaire {
      * Adding questions to the object.
      */
     public function add_questions($sid = false) {
-        global $DB;
+        global $DB,$COURSE;
 
         if ($sid === false) {
             $sid = $this->sid;
         }
+
+
 
         if (!isset($this->questions)) {
             $this->questions = [];
             $this->questionsbysec = [];
         }
 
-        $select = 'surveyid = ? AND deleted = ?';
-        $params = [$sid, 'n'];
+        $sql = "select id from {questionnaire} where sid = $sid order by id asc";
+        $getinstence =  $DB->get_record_sql($sql);
+
+        $sql= "select id,realm,courseid from {questionnaire_survey} where id = $sid";
+        $bespokQnnaire = $DB->get_record_sql($sql);
+        if($bespokQnnaire->realm =='bespoke'){
+            if($COURSE->id == $bespokQnnaire->courseid && $getinstence->id != $this->cm->instance ){
+                $select = 'surveyid = ? AND deleted = ? AND courseid = ?';
+                $params = [$sid, 'n',$COURSE->id];
+            }else if($getinstence->id ==$this->cm->instance){
+                $select = 'surveyid = ? AND deleted = ?';
+                $params = [$sid, 'n' ];
+            }else{
+                $courseids  = array($bespokQnnaire->courseid,$COURSE->id);
+                $courseidsstr =     implode(",",$courseids) ;
+                $select = "courseid in ( $courseidsstr ) AND surveyid = ? AND deleted = ?";
+                $params = [$sid, 'n'];
+            }
+        }else{
+            $select = 'surveyid = ? AND deleted = ?';
+            $params = [$sid, 'n' ];
+        }
+
         if ($records = $DB->get_records_select('questionnaire_question', $select, $params, 'position')) {
             $sec = 1;
             $isbreak = false;
+
             foreach ($records as $record) {
 
                 $this->questions[$record->id] = \mod_questionnaire\question\base::question_builder($record->type_id,
@@ -463,8 +487,19 @@ class questionnaire {
         return $cantake;
     }
 
+
+    public function questionaire_response_status(){
+        global $DB;
+       $sql = "select count(*) as count from {questionnaire_response} where   questionnaireid = $this->id";
+        $count =  $DB->get_record_sql($sql);
+        return $count->count;
+    }
+
     public function is_survey_owner() {
-        return (!empty($this->survey->courseid) && ($this->course->id == $this->survey->courseid));
+
+
+
+        return ((!empty($this->survey->courseid) && ($this->course->id == $this->survey->courseid)) ||$this->survey->realm =='bespoke' );
     }
 
     public function can_view_response($rid) {
@@ -2657,7 +2692,7 @@ class questionnaire {
      * @return boolean
      */
     public function survey_is_public() {
-        return is_object($this->survey) && ($this->survey->realm == 'public');
+        return is_object($this->survey) && ($this->survey->realm == 'public' || $this->survey->realm == 'bespoke');
     }
 
     /**

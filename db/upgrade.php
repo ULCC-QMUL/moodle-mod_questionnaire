@@ -37,6 +37,44 @@ function xmldb_questionnaire_upgrade($oldversion=0) {
         upgrade_mod_savepoint(true, 2007120101, 'questionnaire');
     }
 
+
+    if ($oldversion < 2018110109) {
+
+        // Define field created_by to be added to questionnaire_question.
+        $table = new xmldb_table('questionnaire_question');
+        $field = new xmldb_field('created_by', XMLDB_TYPE_INTEGER, '11', null, XMLDB_NOTNULL, null, '0', 'deleted');
+
+        // Conditionally launch add field created_by.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+        // Define field instance to be added to questionnaire_question.
+        $table = new xmldb_table('questionnaire_question');
+        $field = new xmldb_field('instance', XMLDB_TYPE_INTEGER, '11', null, null, null, '0', 'created_by');
+
+        // Conditionally launch add field instance.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+
+
+        $table = new xmldb_table('questionnaire_question');
+        $field = new xmldb_field('courseid', XMLDB_TYPE_INTEGER, '11', null, null, null, '0', 'instance');
+
+        // Conditionally launch add field courseid.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Questionnaire savepoint reached.
+        // Questionnaire savepoint reached.
+        upgrade_mod_savepoint(true, 2018110109, 'questionnaire');
+    }
+
+
+
+
     if ($oldversion < 2007120102) {
         // Change enum values to lower case for all tables using them.
         $table = new xmldb_table('questionnaire_question');

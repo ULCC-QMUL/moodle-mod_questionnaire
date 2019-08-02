@@ -39,6 +39,11 @@ $currenttab = $SESSION->questionnaire->current_tab;
 // viewing all responses...except in the course where that PUBLIC questionnaire was originally created.
 
 $owner = $questionnaire->is_survey_owner();
+$status = $questionnaire->questionaire_response_status();
+if($status){
+    $owner = false;
+}
+
 if ($questionnaire->capabilities->manage  && $owner) {
     $row[] = new tabobject('settings', $CFG->wwwroot.htmlspecialchars('/mod/questionnaire/qsettings.php?'.
             'id='.$questionnaire->cm->id), get_string('advancedsettings'));
