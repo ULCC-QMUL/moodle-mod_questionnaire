@@ -412,15 +412,12 @@ function questionnaire_get_survey_select($courseid=0, $type='') {
     if ($surveys = questionnaire_get_survey_list($courseid, $type)) {
         $strpreview = get_string('preview_questionnaire', 'questionnaire');
 
-//        restrict teachr to add and edit child Questionnair
+//        restrict teachr to add and edit child Questionnaire
 
         $chkTeacher = "select count(*) as allcount from {role_assignments} ra left join {role} r on r.id = ra.roleid  WHERE ra.userid=" . $USER->id . " and r.shortname='editingteacher'";
 
         $data = $DB->get_record_sql($chkTeacher);
-
-        if ($data->allcount ==0 || is_siteadmin()) {
-
-
+        
             foreach ($surveys as $survey) {
                 $originalcourse = $DB->get_record('course', ['id' => $survey->courseid]);
                 if (!$originalcourse) {
@@ -436,18 +433,22 @@ function questionnaire_get_survey_select($courseid=0, $type='') {
                 if (($type == 'public') && ($survey->courseid == $courseid)) {
                     continue;
                 } else {
-                    $args = "sid={$survey->id}&popup=1";
-                    if (!empty($survey->qid)) {
-                        $args .= "&qid={$survey->qid}";
+                    if ($data->allcount!=0 && $type=='bespoke') {
+                        continue;
+                    } else {
+                        $args = "sid={$survey->id}&popup=1";
+                        if (!empty($survey->qid)) {
+                            $args .= "&qid={$survey->qid}";
+                        }
+                        $link = new moodle_url("/mod/questionnaire/preview.php?{$args}");
+                        $action = new popup_action('click', $link);
+                        $label = $OUTPUT->action_link($link, $survey->qname . ' [' . $originalcourse->fullname . ']',
+                            $action, array('title' => $strpreview));
+                        $surveylist[$type . '-' . $survey->id] = $label;
                     }
-                    $link = new moodle_url("/mod/questionnaire/preview.php?{$args}");
-                    $action = new popup_action('click', $link);
-                    $label = $OUTPUT->action_link($link, $survey->qname . ' [' . $originalcourse->fullname . ']',
-                        $action, array('title' => $strpreview));
-                    $surveylist[$type . '-' . $survey->id] = $label;
                 }
             }
-        }
+
 
     }
 
@@ -572,7 +573,6 @@ function questionnaire_get_incomplete_users($cm, $sid,
         return false;
     }
 
-
 $sql = "SELECT u.id, u.username           
 FROM {user} u
 INNER JOIN {role_assignments} ra ON ra.userid = u.id
@@ -580,13 +580,13 @@ INNER JOIN {context} ct ON ct.id = ra.contextid
 INNER JOIN {course} c ON c.id = ct.instanceid
 INNER JOIN {role} r ON r.id = ra.roleid
 INNER JOIN {course_categories} cc ON cc.id = c.category      
-WHERE r.shortname = 'student' && c.id = $COURSE->id ";
+WHERE r.id =5 && c.id = $COURSE->id ";
     if(!$allusers = $DB->get_records_sql($sql)){
         return false;
     }
     $allusers = array_keys($allusers);
 
-    // Nnow get all completed questionnaires.
+    // Now get all completed questionnaires.
     $params = array('questionnaireid' => $cm->instance, 'complete' => 'y');
     $sql = "SELECT userid FROM {questionnaire_response} " .
            "WHERE questionnaireid = :questionnaireid AND complete = :complete " .

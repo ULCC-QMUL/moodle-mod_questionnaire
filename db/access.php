@@ -229,21 +229,21 @@ $capabilities = array(
 
     // CUSTOM CAPABILITY: Ability to create bespoke surveys which can be accessed from multiple places.
     'mod/questionnaire:createbespoke' => array(
-
         'captype' => 'write',
         'contextlevel' => CONTEXT_MODULE,
         'legacy' => array(
             'coursecreator' => CAP_ALLOW,
-            'manager' => CAP_ALLOW
+            'manager' => CAP_ALLOW,
+            'editingteacher' => CAP_ALLOW
         )
     ),
     'mod/questionnaire:editbespoke' => array(
-
         'captype' => 'write',
         'contextlevel' => CONTEXT_MODULE,
         'legacy' => array(
             'coursecreator' => CAP_ALLOW,
-            'manager' => CAP_ALLOW
+            'manager' => CAP_ALLOW,
+            'editingteacher' => CAP_ALLOW
         )
     ),
 
